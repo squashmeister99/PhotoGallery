@@ -3,6 +3,11 @@ package com.example.rajesh.photogallery;
 import android.net.Uri;
 import android.util.Log;
 
+import com.example.rajesh.photogallery.GalleryItemGson.PhotosBean.PhotoBean;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -41,10 +46,11 @@ public class FlickrFetcher {
 
             Log.i(TAG, "Received JSON: " + jsonString);
 
-            JSONObject jsonBody = new JSONObject(jsonString);
-            parseItems(items, jsonBody);
+            //JSONObject jsonBody = new JSONObject(jsonString);
+            //parseItems(items, jsonBody);
+            parseItemsGson(items, jsonString);
 
-        } catch (JSONException je) {
+        } catch (JsonParseException je) {
             Log.e(TAG, "failed to parse json", je);
 
         } catch (IOException ioe) {
@@ -72,6 +78,24 @@ public class FlickrFetcher {
             }
 
             item.setUrl(photoJsonObject.getString("url_s"));
+            items.add(item);
+        }
+
+    }
+
+    private void parseItemsGson(List<GalleryItem> items, String jsonString)
+    {
+        Gson gson = new GsonBuilder().create();
+        GalleryItemGson gsonItems = gson.fromJson(jsonString, GalleryItemGson.class);
+
+        List<PhotoBean> photoList = gsonItems.getPhotos().getPhoto();
+
+        for(int i =0; i < photoList.size(); i++) {
+            GalleryItem item = new GalleryItem();
+            item.setId(photoList.get(i).getId());
+            item.setUrl(photoList.get(i).getUrl_s());
+            item.setCaption(photoList.get(i).getId());
+
             items.add(item);
         }
 
