@@ -1,15 +1,21 @@
 package com.example.rajesh.photogallery;
 
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.Volley;
+import com.example.rajesh.photogallery.PhotoGalleryGSON.PhotosBean.PhotoBean;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +30,8 @@ public class PhotoGalleryFragment extends Fragment {
     private static final String TAG = "PhotoGalleryFragment";
 
     private RecyclerView mPhotoRecyclerView;
-    private List<GalleryItem> mItems = new ArrayList<>();
+    private List<PhotoBean> mItems = new ArrayList<>();
+    private RequestQueue mRequestQueue;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -34,8 +41,38 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-        new FetchItemsTask().execute();
 
+        Response.Listener<PhotoGalleryGSON> listener = new Response.Listener<PhotoGalleryGSON>() {
+            @Override
+            public void onResponse(PhotoGalleryGSON response) {
+                mItems = response.getPhotos().getPhoto();
+                setupAdapter();
+            }
+        };
+
+        Response.ErrorListener errorListerner = new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "volley error", error);
+            }
+        };
+
+        FlickrFetcher instance = FlickrFetcher.getInstance();
+
+        mRequestQueue = Volley.newRequestQueue(getActivity());
+
+        GsonRequest<PhotoGalleryGSON> buildGsonRequest = instance.buildGsonRequest(listener, errorListerner);
+        buildGsonRequest.addMarker(TAG);
+
+        mRequestQueue.add(buildGsonRequest);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        // cancel all requests for this
+        mRequestQueue.cancelAll(TAG);
+        Log.i(TAG, "on stop called");
     }
 
     @Nullable
@@ -43,25 +80,9 @@ public class PhotoGalleryFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mPhotoRecyclerView = (RecyclerView) v.findViewById(R.id.fragment_photo_gallery_recycler_view);
-
         mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
 
         return v;
-    }
-
-    private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>> {
-
-        @Override
-        protected List<GalleryItem> doInBackground(Void... params) {
-            return new FlickrFetcher().fetchItems();
-        }
-
-        @Override
-        protected void onPostExecute(List<GalleryItem> galleryItems) {
-            mItems = galleryItems;
-            setupAdapter();
-
-        }
     }
 
     private void setupAdapter() {
@@ -79,16 +100,15 @@ public class PhotoGalleryFragment extends Fragment {
             mTitleTextView = (TextView) itemView;
         }
 
-        public void bindGalleryItem(GalleryItem item) {
-            mTitleTextView.setText(item.toString());
+        public void bindGalleryItem(PhotoBean item) {
+            mTitleTextView.setText(item.getTitle());
         }
     }
 
     private class PhotoAdapter extends RecyclerView.Adapter<PhotoHolder> {
 
-        private List<GalleryItem> mGalleryItems;
-
-        public PhotoAdapter(List<GalleryItem> galleryItems) {
+        private List<PhotoBean> mGalleryItems;
+        public PhotoAdapter(List<PhotoBean> galleryItems) {
             mGalleryItems = galleryItems;
         }
 
