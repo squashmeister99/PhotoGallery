@@ -17,6 +17,7 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.Volley;
 import com.example.rajesh.photogallery.PhotoGalleryGSON.PhotosBean.PhotoBean;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import it.sephiroth.android.library.picasso.Picasso;
@@ -33,6 +34,9 @@ public class PhotoGalleryFragment extends Fragment {
     private RecyclerView mPhotoRecyclerView;
     private List<PhotoBean> mItems = null;
     private RequestQueue mRequestQueue;
+    boolean needNewPictures = true;
+    GridLayoutManager mGridLayoutManager = null;
+    int mPage = 1; // default to 1 page at a time;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -43,6 +47,8 @@ public class PhotoGalleryFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
         Log.i(TAG, "onCreate  called");
+        mItems = new ArrayList<>();
+
     }
 
     @Override
@@ -58,7 +64,38 @@ public class PhotoGalleryFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mPhotoRecyclerView = (RecyclerView) v.findViewById(R.id.fragment_photo_gallery_recycler_view);
-        mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
+        mGridLayoutManager = new GridLayoutManager(getActivity(), 3);
+        mPhotoRecyclerView.setLayoutManager(mGridLayoutManager);
+        mPhotoRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+            }
+
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                int visibleItemCount, totalItemCount, pastVisiblesItems;
+                if(dy > 0) //check for scroll down
+                {
+                    visibleItemCount = mGridLayoutManager.getChildCount();
+                    totalItemCount = mGridLayoutManager.getItemCount();
+                    pastVisiblesItems = mGridLayoutManager.findFirstVisibleItemPosition();
+                    Log.v(TAG, "visible item count = " + visibleItemCount);
+                    Log.v(TAG, "total item count = " + totalItemCount);
+                    Log.v(TAG, "past visible items = " + pastVisiblesItems);
+
+                    if ( (visibleItemCount + pastVisiblesItems) >= totalItemCount)
+                    {
+                        Log.v(TAG, "Last Item Wow !");
+                        //Do pagination.. i.e. fetch new data
+                        mPage++; // increment the page
+                        needNewPictures = true;
+                        displayPhotos(mPage);
+                    }
+                }
+            }
+        });
+
         Log.i(TAG, "onCreateView called");
         return v;
     }
@@ -66,19 +103,21 @@ public class PhotoGalleryFragment extends Fragment {
     private void setupAdapter() {
         if(isAdded() && mItems != null) {
             mPhotoRecyclerView.setAdapter(new PhotoAdapter(mItems));
+            mPhotoRecyclerView.scrollToPosition((mPage - 1)*100); // scroll to the correct page
         }
     }
 
-    private void displayPhotos() {
+    private void displayPhotos(int page) {
 
         // if no items have been fetched, call flickr and get the new list
-        if(mItems == null) {
+        if(needNewPictures == true) {
             Response.Listener<PhotoGalleryGSON> listener = new Response.Listener<PhotoGalleryGSON>() {
                 @Override
                 public void onResponse(PhotoGalleryGSON response) {
                     Log.i(TAG, "onResponse listener  called");
-                    mItems = response.getPhotos().getPhoto();
+                    mItems.addAll(response.getPhotos().getPhoto());
                     setupAdapter();
+                    needNewPictures = false;
                 }
             };
 
@@ -91,7 +130,7 @@ public class PhotoGalleryFragment extends Fragment {
 
             FlickrFetcher instance = FlickrFetcher.getInstance();
             mRequestQueue = Volley.newRequestQueue(getActivity());
-            GsonRequest<PhotoGalleryGSON> buildGsonRequest = instance.buildGsonRequest(listener, errorListerner);
+            GsonRequest<PhotoGalleryGSON> buildGsonRequest = instance.buildGsonRequest(page, listener, errorListerner);
             buildGsonRequest.addMarker(TAG);
             mRequestQueue.add(buildGsonRequest);
         }
@@ -103,7 +142,8 @@ public class PhotoGalleryFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        displayPhotos();
+        mPage = 1;
+        displayPhotos(mPage);
         Log.i(TAG, "onResume called");
     }
 

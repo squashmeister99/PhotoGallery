@@ -30,7 +30,7 @@ public class FlickrFetcher {
         return mInstance;
     }
 
-    GsonRequest<PhotoGalleryGSON> buildGsonRequest(Response.Listener<PhotoGalleryGSON> listener, Response.ErrorListener errorListener) {
+    GsonRequest<PhotoGalleryGSON> buildGsonRequest(int page, Response.Listener<PhotoGalleryGSON> listener, Response.ErrorListener errorListener) {
 
             String url = Uri.parse("https://api.flickr.com/services/rest/").buildUpon()
                     .appendQueryParameter("method", "flickr.photos.getRecent")
@@ -38,6 +38,7 @@ public class FlickrFetcher {
                     .appendQueryParameter("format", "json")
                     .appendQueryParameter("nojsoncallback", "1")
                     .appendQueryParameter("extras", "url_s")
+                    .appendQueryParameter("page", Integer.toString(page))
                     .build().toString();
 
             return new GsonRequest<PhotoGalleryGSON>
