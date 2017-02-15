@@ -17,7 +17,6 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.Volley;
 import com.example.rajesh.photogallery.PhotoGalleryGSON.PhotosBean.PhotoBean;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import it.sephiroth.android.library.picasso.Picasso;
@@ -32,7 +31,7 @@ public class PhotoGalleryFragment extends Fragment {
     private static final String TAG = "PhotoGalleryFragment";
 
     private RecyclerView mPhotoRecyclerView;
-    private List<PhotoBean> mItems = new ArrayList<>();
+    private List<PhotoBean> mItems = null;
     private RequestQueue mRequestQueue;
 
     public static PhotoGalleryFragment newInstance() {
@@ -43,6 +42,7 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
+        Log.i(TAG, "onCreate  called");
     }
 
     @Override
@@ -50,7 +50,7 @@ public class PhotoGalleryFragment extends Fragment {
         super.onStop();
         // cancel all requests for this
         mRequestQueue.cancelAll(TAG);
-        Log.i(TAG, "on stop called");
+        Log.i(TAG, "onStop called");
     }
 
     @Nullable
@@ -59,39 +59,52 @@ public class PhotoGalleryFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mPhotoRecyclerView = (RecyclerView) v.findViewById(R.id.fragment_photo_gallery_recycler_view);
         mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
+        Log.i(TAG, "onCreateView called");
         return v;
     }
 
     private void setupAdapter() {
-        if(isAdded()) {
+        if(isAdded() && mItems != null) {
             mPhotoRecyclerView.setAdapter(new PhotoAdapter(mItems));
         }
+    }
+
+    private void displayPhotos() {
+
+        // if no items have been fetched, call flickr and get the new list
+        if(mItems == null) {
+            Response.Listener<PhotoGalleryGSON> listener = new Response.Listener<PhotoGalleryGSON>() {
+                @Override
+                public void onResponse(PhotoGalleryGSON response) {
+                    Log.i(TAG, "onResponse listener  called");
+                    mItems = response.getPhotos().getPhoto();
+                    setupAdapter();
+                }
+            };
+
+            Response.ErrorListener errorListerner = new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.e(TAG, "volley error", error);
+                }
+            };
+
+            FlickrFetcher instance = FlickrFetcher.getInstance();
+            mRequestQueue = Volley.newRequestQueue(getActivity());
+            GsonRequest<PhotoGalleryGSON> buildGsonRequest = instance.buildGsonRequest(listener, errorListerner);
+            buildGsonRequest.addMarker(TAG);
+            mRequestQueue.add(buildGsonRequest);
+        }
+
+        // setup adapter
+        setupAdapter();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-
-        Response.Listener<PhotoGalleryGSON> listener = new Response.Listener<PhotoGalleryGSON>() {
-            @Override
-            public void onResponse(PhotoGalleryGSON response) {
-                mItems = response.getPhotos().getPhoto();
-                setupAdapter();
-            }
-        };
-
-        Response.ErrorListener errorListerner = new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.e(TAG, "volley error", error);
-            }
-        };
-
-        FlickrFetcher instance = FlickrFetcher.getInstance();
-        mRequestQueue = Volley.newRequestQueue(getActivity());
-        GsonRequest<PhotoGalleryGSON> buildGsonRequest = instance.buildGsonRequest(listener, errorListerner);
-        buildGsonRequest.addMarker(TAG);
-        mRequestQueue.add(buildGsonRequest);
+        displayPhotos();
+        Log.i(TAG, "onResume called");
     }
 
     private class PhotoHolder extends RecyclerView.ViewHolder {
