@@ -42,29 +42,7 @@ public class PhotoGalleryFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
 
-        Response.Listener<PhotoGalleryGSON> listener = new Response.Listener<PhotoGalleryGSON>() {
-            @Override
-            public void onResponse(PhotoGalleryGSON response) {
-                mItems = response.getPhotos().getPhoto();
-                setupAdapter();
-            }
-        };
 
-        Response.ErrorListener errorListerner = new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.e(TAG, "volley error", error);
-            }
-        };
-
-        FlickrFetcher instance = FlickrFetcher.getInstance();
-
-        mRequestQueue = Volley.newRequestQueue(getActivity());
-
-        GsonRequest<PhotoGalleryGSON> buildGsonRequest = instance.buildGsonRequest(listener, errorListerner);
-        buildGsonRequest.addMarker(TAG);
-
-        mRequestQueue.add(buildGsonRequest);
     }
 
     @Override
@@ -89,6 +67,32 @@ public class PhotoGalleryFragment extends Fragment {
         if(isAdded()) {
             mPhotoRecyclerView.setAdapter(new PhotoAdapter(mItems));
         }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        Response.Listener<PhotoGalleryGSON> listener = new Response.Listener<PhotoGalleryGSON>() {
+            @Override
+            public void onResponse(PhotoGalleryGSON response) {
+                mItems = response.getPhotos().getPhoto();
+                setupAdapter();
+            }
+        };
+
+        Response.ErrorListener errorListerner = new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "volley error", error);
+            }
+        };
+
+        FlickrFetcher instance = FlickrFetcher.getInstance();
+        mRequestQueue = Volley.newRequestQueue(getActivity());
+        GsonRequest<PhotoGalleryGSON> buildGsonRequest = instance.buildGsonRequest(listener, errorListerner);
+        buildGsonRequest.addMarker(TAG);
+        mRequestQueue.add(buildGsonRequest);
     }
 
     private class PhotoHolder extends RecyclerView.ViewHolder {
