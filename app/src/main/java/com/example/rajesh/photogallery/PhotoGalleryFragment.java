@@ -9,7 +9,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
+import android.widget.ImageView;
 
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -19,6 +19,8 @@ import com.example.rajesh.photogallery.PhotoGalleryGSON.PhotosBean.PhotoBean;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import it.sephiroth.android.library.picasso.Picasso;
 
 
 /**
@@ -41,8 +43,6 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-
-
     }
 
     @Override
@@ -59,7 +59,6 @@ public class PhotoGalleryFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mPhotoRecyclerView = (RecyclerView) v.findViewById(R.id.fragment_photo_gallery_recycler_view);
         mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
-
         return v;
     }
 
@@ -97,15 +96,18 @@ public class PhotoGalleryFragment extends Fragment {
 
     private class PhotoHolder extends RecyclerView.ViewHolder {
 
-        private TextView mTitleTextView;
+        private ImageView mImageView;
 
         public PhotoHolder(View itemView) {
             super(itemView);
-            mTitleTextView = (TextView) itemView;
+            mImageView = (ImageView) itemView.findViewById(R.id.fragment_photo_gallery_image_view);
         }
 
-        public void bindGalleryItem(PhotoBean item) {
-            mTitleTextView.setText(item.getTitle());
+        public void bindPhotoBean(PhotoBean item) {
+            Picasso.with(getActivity()).
+                    load(item.getUrl_s()).
+                    placeholder(R.drawable.placeholder)
+                    .into(mImageView);
         }
     }
 
@@ -118,14 +120,14 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         public PhotoHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            TextView textView = new TextView(getActivity());
-            return new PhotoHolder(textView);
+            LayoutInflater inflater = LayoutInflater.from(getActivity());
+            View view = inflater.inflate(R.layout.gallery_item, parent, false);
+            return new PhotoHolder(view);
         }
 
         @Override
         public void onBindViewHolder(PhotoHolder holder, int position) {
-            holder.bindGalleryItem(mGalleryItems.get(position));
-
+            holder.bindPhotoBean(mGalleryItems.get(position));
         }
 
         @Override
