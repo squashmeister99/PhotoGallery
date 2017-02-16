@@ -1,5 +1,6 @@
 package com.example.rajesh.photogallery;
 
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -64,7 +65,13 @@ public class PhotoGalleryFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mPhotoRecyclerView = (RecyclerView) v.findViewById(R.id.fragment_photo_gallery_recycler_view);
-        mGridLayoutManager = new GridLayoutManager(getActivity(), 3);
+
+        int numberofColumns = 3;
+        if(getActivity().getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE)  {
+            numberofColumns = 4;
+        }
+
+        mGridLayoutManager = new GridLayoutManager(getActivity(), numberofColumns);
         mPhotoRecyclerView.setLayoutManager(mGridLayoutManager);
         mPhotoRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
