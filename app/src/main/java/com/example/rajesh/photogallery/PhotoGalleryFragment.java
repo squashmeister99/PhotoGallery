@@ -6,8 +6,12 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -46,9 +50,56 @@ public class PhotoGalleryFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
         setRetainInstance(true);
         Log.i(TAG, "onCreate  called");
         mItems = new ArrayList<>();
+
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_photo_gallery, menu);
+
+        MenuItem searchItem = menu.findItem(R.id.menu_item_search);
+        final SearchView searchView = (SearchView) searchItem.getActionView();
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                QueryPreferences.setStoredQuery(getActivity(), query);
+                updatePhotos();
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                return false;
+            }
+        });
+    }
+
+    private void updatePhotos() {
+        needNewPictures = true;
+        mPage = 1;
+        mItems.clear();
+        displayPhotos(mPage);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        switch(item.getItemId()) {
+
+            case R.id.menu_item_clear:
+                QueryPreferences.setStoredQuery(getActivity(), null);
+                updatePhotos();
+                return true;
+
+                default:
+                    return super.onOptionsItemSelected(item);
+        }
 
     }
 
@@ -87,9 +138,6 @@ public class PhotoGalleryFragment extends Fragment {
                     visibleItemCount = mGridLayoutManager.getChildCount();
                     totalItemCount = mGridLayoutManager.getItemCount();
                     pastVisiblesItems = mGridLayoutManager.findFirstVisibleItemPosition();
-                    Log.v(TAG, "visible item count = " + visibleItemCount);
-                    Log.v(TAG, "total item count = " + totalItemCount);
-                    Log.v(TAG, "past visible items = " + pastVisiblesItems);
 
                     if ( (visibleItemCount + pastVisiblesItems) >= totalItemCount)
                     {
@@ -137,7 +185,16 @@ public class PhotoGalleryFragment extends Fragment {
 
             FlickrFetcher instance = FlickrFetcher.getInstance();
             mRequestQueue = Volley.newRequestQueue(getActivity());
-            GsonRequest<PhotoGalleryGSON> buildGsonRequest = instance.buildGsonRequest(page, listener, errorListerner);
+            GsonRequest<PhotoGalleryGSON> buildGsonRequest;
+
+            String query = QueryPreferences.getStoredQuery(getActivity());
+            if(query == null) {
+               buildGsonRequest = instance.downloadRecentPhotos(page, listener, errorListerner);
+            }
+            else  {
+                buildGsonRequest = instance.searchPhotos(query, page, listener, errorListerner);
+            }
+
             buildGsonRequest.addMarker(TAG);
             mRequestQueue.add(buildGsonRequest);
         }
