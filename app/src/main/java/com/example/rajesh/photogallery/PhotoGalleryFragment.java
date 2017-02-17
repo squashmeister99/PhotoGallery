@@ -35,12 +35,14 @@ import it.sephiroth.android.library.picasso.Picasso;
 public class PhotoGalleryFragment extends Fragment {
 
     private static final String TAG = "PhotoGalleryFragment";
+    private static final int LANDSCAPE_MODE_COLUMNS = 4;
+    private static final int PORTRAIT_MODE_COLUMNS = 3;
 
-    private RecyclerView mPhotoRecyclerView;
+    private RecyclerView mPhotoRecyclerView = null;
     private List<PhotoBean> mItems = null;
-    private RequestQueue mRequestQueue;
-    boolean needNewPictures = true;
+    private RequestQueue mRequestQueue = null;
     GridLayoutManager mGridLayoutManager = null;
+    boolean needNewPictures = true;
     int mPage = 1; // default to 1 page at a time;
 
     public static PhotoGalleryFragment newInstance() {
@@ -54,7 +56,6 @@ public class PhotoGalleryFragment extends Fragment {
         setRetainInstance(true);
         Log.i(TAG, "onCreate  called");
         mItems = new ArrayList<>();
-
     }
 
     @Override
@@ -114,14 +115,13 @@ public class PhotoGalleryFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        
         View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mPhotoRecyclerView = (RecyclerView) v.findViewById(R.id.fragment_photo_gallery_recycler_view);
 
-        int numberofColumns = 3;
-        if(getActivity().getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE)  {
-            numberofColumns = 4;
-        }
-
+        int numberofColumns = (getActivity().getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) 
+                ? LANDSCAPE_MODE_COLUMNS: PORTRAIT_MODE_COLUMNS ;
+        
         mGridLayoutManager = new GridLayoutManager(getActivity(), numberofColumns);
         mPhotoRecyclerView.setLayoutManager(mGridLayoutManager);
         mPhotoRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
@@ -142,10 +142,7 @@ public class PhotoGalleryFragment extends Fragment {
                     if ( (visibleItemCount + pastVisiblesItems) >= totalItemCount)
                     {
                         Log.v(TAG, "Last Item Wow !");
-                        //Do pagination.. i.e. fetch new data
-                        mPage++; // increment the page
-                        needNewPictures = true;
-                        displayPhotos(mPage);
+                        appendNewImages();
                     }
                 }
             }
@@ -155,6 +152,13 @@ public class PhotoGalleryFragment extends Fragment {
         return v;
     }
 
+    private void appendNewImages() {
+        //Do pagination.. i.e. fetch new data
+        mPage++; // increment the page
+        needNewPictures = true;
+        displayPhotos(mPage);
+    }
+    
     private void setupAdapter() {
         if(isAdded() && mItems != null) {
             mPhotoRecyclerView.setAdapter(new PhotoAdapter(mItems));
@@ -183,23 +187,15 @@ public class PhotoGalleryFragment extends Fragment {
                 }
             };
 
-            FlickrFetcher instance = FlickrFetcher.getInstance();
-            mRequestQueue = Volley.newRequestQueue(getActivity());
-            GsonRequest<PhotoGalleryGSON> buildGsonRequest;
-
-            String query = QueryPreferences.getStoredQuery(getActivity());
-            if(query == null) {
-               buildGsonRequest = instance.downloadRecentPhotos(page, listener, errorListerner);
-            }
-            else  {
-                buildGsonRequest = instance.searchPhotos(query, page, listener, errorListerner);
-            }
-
+            // build a request
+            GsonRequest<PhotoGalleryGSON> buildGsonRequest = FlickrFetcher.getInstance().buildFlickrQueryRequest(getActivity(), page, listener, errorListerner);
             buildGsonRequest.addMarker(TAG);
+
+            // add to request queue
+            mRequestQueue = Volley.newRequestQueue(getActivity());
             mRequestQueue.add(buildGsonRequest);
         }
 
-        // setup adapter
         setupAdapter();
     }
 

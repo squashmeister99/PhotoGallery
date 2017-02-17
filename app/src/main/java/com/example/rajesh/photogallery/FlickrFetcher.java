@@ -1,5 +1,6 @@
 package com.example.rajesh.photogallery;
 
+import android.content.Context;
 import android.net.Uri;
 
 import com.android.volley.Response;
@@ -44,14 +45,24 @@ public class FlickrFetcher {
         return uriBuilder.build().toString();
     }
 
-    GsonRequest<PhotoGalleryGSON> searchPhotos(String query, int page, Response.Listener<PhotoGalleryGSON> listener, Response.ErrorListener errorListener) {
+    GsonRequest<PhotoGalleryGSON> buildFlickrQueryRequest(Context context, int page, Response.Listener<PhotoGalleryGSON> listener, Response.ErrorListener errorListener) {
+        String query = QueryPreferences.getStoredQuery(context);
+        if(query == null) {
+            return downloadRecentPhotos(page, listener, errorListener);
+        }
+        else  {
+            return searchPhotos(query, page, listener, errorListener);
+        }
+    }
+
+    private GsonRequest<PhotoGalleryGSON> searchPhotos(String query, int page, Response.Listener<PhotoGalleryGSON> listener, Response.ErrorListener errorListener) {
 
             String url = buildUrl(SEARCH_METHOD, query, page);
             return new GsonRequest<PhotoGalleryGSON>
                     (url, PhotoGalleryGSON.class, null, listener, errorListener);
     }
 
-    GsonRequest<PhotoGalleryGSON> downloadRecentPhotos(int page, Response.Listener<PhotoGalleryGSON> listener, Response.ErrorListener errorListener) {
+    private GsonRequest<PhotoGalleryGSON> downloadRecentPhotos(int page, Response.Listener<PhotoGalleryGSON> listener, Response.ErrorListener errorListener) {
 
         String url = buildUrl(FETCH_RECENTS_METHOD, null, page);
         return new GsonRequest<PhotoGalleryGSON>
