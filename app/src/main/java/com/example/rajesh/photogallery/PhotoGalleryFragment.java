@@ -39,11 +39,11 @@ public class PhotoGalleryFragment extends Fragment {
     private static final int PORTRAIT_MODE_COLUMNS = 3;
 
     private RecyclerView mPhotoRecyclerView = null;
-    private List<PhotoBean> mItems = null;
     private RequestQueue mRequestQueue = null;
     GridLayoutManager mGridLayoutManager = null;
     boolean needNewPictures = true;
-    int mPage = 1; // default to 1 page at a time;
+    int mCurrentDisplayPage = 1; // default to page 1
+    FlickrPhotoDatabase mImageDatabase = null;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -55,7 +55,7 @@ public class PhotoGalleryFragment extends Fragment {
         setHasOptionsMenu(true);
         setRetainInstance(true);
         Log.i(TAG, "onCreate  called");
-        mItems = new ArrayList<>();
+        mImageDatabase = FlickrPhotoDatabase.getInstance();
     }
 
     @Override
@@ -83,9 +83,8 @@ public class PhotoGalleryFragment extends Fragment {
 
     private void updatePhotos() {
         needNewPictures = true;
-        mPage = 1;
-        mItems.clear();
-        displayPhotos(mPage);
+        mCurrentDisplayPage = 1;
+        displayPhotos(mCurrentDisplayPage);
     }
 
     @Override
@@ -154,15 +153,17 @@ public class PhotoGalleryFragment extends Fragment {
 
     private void appendNewImages() {
         //Do pagination.. i.e. fetch new data
-        mPage++; // increment the page
+        mCurrentDisplayPage++; // increment the page
         needNewPictures = true;
-        displayPhotos(mPage);
+        displayPhotos(mCurrentDisplayPage);
     }
     
     private void setupAdapter() {
-        if(isAdded() && mItems != null) {
-            mPhotoRecyclerView.setAdapter(new PhotoAdapter(mItems));
-            mPhotoRecyclerView.scrollToPosition((mPage - 1)*100); // scroll to the correct page
+        ArrayList<PhotoBean> images = FlickrPhotoDatabase.getInstance().getImages();
+
+        if(isAdded() && images != null) {
+            mPhotoRecyclerView.setAdapter(new PhotoAdapter(images));
+            mPhotoRecyclerView.scrollToPosition((mCurrentDisplayPage - 1)*100); // scroll to the correct page
         }
     }
 
@@ -174,7 +175,12 @@ public class PhotoGalleryFragment extends Fragment {
                 @Override
                 public void onResponse(PhotoGalleryGSON response) {
                     Log.i(TAG, "onResponse listener  called");
-                    mItems.addAll(response.getPhotos().getPhoto());
+                    
+                    if(mCurrentDisplayPage == 1) {
+                        mImageDatabase.clear();
+                    }
+
+                    mImageDatabase.addImages(response.getPhotos().getPhoto());
                     setupAdapter();
                     needNewPictures = false;
                 }
@@ -202,8 +208,8 @@ public class PhotoGalleryFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        mPage = 1;
-        displayPhotos(mPage);
+        mCurrentDisplayPage = 1;
+        displayPhotos(mCurrentDisplayPage);
         Log.i(TAG, "onResume called");
     }
 
