@@ -55,6 +55,7 @@ public class PhotoGalleryFragment extends Fragment {
         setHasOptionsMenu(true);
         setRetainInstance(true);
         Log.i(TAG, "onCreate  called");
+
         mImageDatabase = FlickrPhotoDatabase.getInstance();
     }
 
@@ -79,6 +80,15 @@ public class PhotoGalleryFragment extends Fragment {
                 return false;
             }
         });
+
+        MenuItem toggleitem = menu.findItem(R.id.menu_item_toggle_polling);
+
+        if(PollService.isServiceAlarmOn(getActivity())) {
+            toggleitem.setTitle(R.string.stop_polling);
+        }
+        else {
+            toggleitem.setTitle(R.string.start_polling);
+        }
     }
 
     private void updatePhotos() {
@@ -95,6 +105,12 @@ public class PhotoGalleryFragment extends Fragment {
             case R.id.menu_item_clear:
                 QueryPreferences.setStoredQuery(getActivity(), null);
                 updatePhotos();
+                return true;
+
+            case R.id.menu_item_toggle_polling:
+                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
+                PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+                getActivity().invalidateOptionsMenu();
                 return true;
 
                 default:
