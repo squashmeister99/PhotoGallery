@@ -1,14 +1,16 @@
 package com.example.rajesh.photogallery;
 
-import android.app.AlarmManager;
-import android.app.IntentService;
+import android.annotation.TargetApi;
 import android.app.Notification;
 import android.app.PendingIntent;
+import android.app.job.JobInfo;
+import android.app.job.JobParameters;
+import android.app.job.JobScheduler;
+import android.app.job.JobService;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
-import android.net.ConnectivityManager;
-import android.os.SystemClock;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
@@ -16,51 +18,58 @@ import android.util.Log;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.Volley;
-import com.example.rajesh.photogallery.PhotoGalleryGSON.PhotosBean.PhotoBean;
 
 import java.util.List;
 
 /**
- * Created by Rajesh on 2/19/2017.
+ * Created by Rajesh on 2/21/2017.
  */
 
-public class PollService extends IntentService {
+@TargetApi(21)
+public class JobSchedulerPollService extends JobService {
 
-    private static final String TAG = "PollService";
-    private static final int POLL_INTERVAL = 1000*5; // 60 sec;
+    private static final String TAG = "JobSchedulerPollService";
+    private static final int JOB_ID = 85050;
 
     public static boolean isServiceAlarmOn(Context context) {
-        Intent i = PollService.newIntent(context);
-        PendingIntent pi = PendingIntent.getService(context, 0, i, PendingIntent.FLAG_NO_CREATE);
-        return pi != null;
+        JobScheduler scheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+
+        boolean hasBeenScheduled = false;
+        for(JobInfo info : scheduler.getAllPendingJobs()) {
+            if (info.getId() == JOB_ID) {
+                hasBeenScheduled = true;
+            }
+        }
+
+        return hasBeenScheduled;
     }
 
     public static void setServiceAlarm(Context context, boolean isOn) {
-        Intent i = PollService.newIntent(context);
-        PendingIntent pi = PendingIntent.getService(context, 0, i, 0);
+        Log.i(TAG, "setServiceAlarm: " + isOn);
 
-        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        JobScheduler scheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
 
         if(isOn) {
-            alarmManager.setInexactRepeating(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime(), POLL_INTERVAL, pi);
+            // schedule the job
+            JobInfo jobInfo = new JobInfo.Builder(JOB_ID, new ComponentName(context, JobSchedulerPollService.class))
+                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED)
+                    .setPeriodic(1000 * 60)
+                    .setPersisted(true)
+                    .build();
+
+            int result = scheduler.schedule(jobInfo);
+            if (result == JobScheduler.RESULT_SUCCESS) {
+                Log.d(TAG, "Job scheduled successfully!");
+            }
         }
         else {
-            alarmManager.cancel(pi);
-            pi.cancel();
+            // cancel the job
+            scheduler.cancel(JOB_ID);
         }
-    }
-
-    public static Intent newIntent(Context context) {
-        return new Intent(context, PollService.class);
-    }
-
-    public PollService() {
-        super(TAG);
     }
 
     @Override
-    protected void onHandleIntent(Intent intent) {
-        if(!isNetworkAvailableAndConnected()) return;
+    public boolean onStartJob(final JobParameters params) {
         final String lastResultId = QueryPreferences.getLAstResultId(this);
 
         Response.Listener<PhotoGalleryGSON> listener = new Response.Listener<PhotoGalleryGSON>() {
@@ -68,7 +77,7 @@ public class PollService extends IntentService {
             public void onResponse(PhotoGalleryGSON response) {
                 Log.i(TAG, "onResponse listener  called");
 
-                List<PhotoBean> newImages = response.getPhotos().getPhoto();
+                List<PhotoGalleryGSON.PhotosBean.PhotoBean> newImages = response.getPhotos().getPhoto();
                 if(newImages.isEmpty()) return;
 
                 String resultId = newImages.get(0).getId();
@@ -97,6 +106,7 @@ public class PollService extends IntentService {
 
                     NotificationManagerCompat notificationManager = NotificationManagerCompat.from(getApplicationContext());
                     notificationManager.notify(0, notification);
+                    jobFinished(params, false);
                 }
             }
         };
@@ -113,12 +123,13 @@ public class PollService extends IntentService {
         gsonRequest.addMarker(TAG);
         Volley.newRequestQueue(this).add(gsonRequest);
 
-        Log.i(TAG, "Received an intent: " + intent);
+        Log.i(TAG, "Received an call to start job service");
+        return false;
     }
 
-    private boolean isNetworkAvailableAndConnected() {
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-        boolean isNetworkAvailable = cm.getActiveNetworkInfo() != null;
-        return isNetworkAvailable && cm.getActiveNetworkInfo().isConnected();
+    @Override
+    public boolean onStopJob(JobParameters params) {
+        // return true indicates that we want the interrupted job to be rescheduled
+        return true;
     }
 }

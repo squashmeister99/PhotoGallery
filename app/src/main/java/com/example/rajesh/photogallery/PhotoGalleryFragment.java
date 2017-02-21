@@ -1,6 +1,7 @@
 package com.example.rajesh.photogallery;
 
 import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -83,7 +84,7 @@ public class PhotoGalleryFragment extends Fragment {
 
         MenuItem toggleitem = menu.findItem(R.id.menu_item_toggle_polling);
 
-        if(PollService.isServiceAlarmOn(getActivity())) {
+        if(isServiceAlarmOn()) {
             toggleitem.setTitle(R.string.stop_polling);
         }
         else {
@@ -97,6 +98,16 @@ public class PhotoGalleryFragment extends Fragment {
         displayPhotos(mCurrentDisplayPage);
     }
 
+    private boolean isServiceAlarmOn() {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            return JobSchedulerPollService.isServiceAlarmOn(getActivity());
+        }
+        else
+        {
+            return PollService.isServiceAlarmOn(getActivity());
+        }
+    }
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
 
@@ -108,15 +119,25 @@ public class PhotoGalleryFragment extends Fragment {
                 return true;
 
             case R.id.menu_item_toggle_polling:
-                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
-                PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+                // toggle the service alarm state
+                setServiceAlarm(!isServiceAlarmOn());
                 getActivity().invalidateOptionsMenu();
                 return true;
 
                 default:
                     return super.onOptionsItemSelected(item);
         }
+    }
 
+    private void setServiceAlarm(boolean shouldStartAlarm)
+    {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            JobSchedulerPollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+        }
+        else
+        {
+            PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+        }
     }
 
     @Override
@@ -186,7 +207,7 @@ public class PhotoGalleryFragment extends Fragment {
     private void displayPhotos(int page) {
 
         // if no items have been fetched, call flickr and get the new list
-        if(needNewPictures == true) {
+        if(needNewPictures) {
             Response.Listener<PhotoGalleryGSON> listener = new Response.Listener<PhotoGalleryGSON>() {
                 @Override
                 public void onResponse(PhotoGalleryGSON response) {
