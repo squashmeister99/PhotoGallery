@@ -1,5 +1,6 @@
 package com.example.rajesh.photogallery;
 
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
@@ -250,20 +251,31 @@ public class PhotoGalleryFragment extends Fragment {
         Log.i(TAG, "onResume called");
     }
 
-    private class PhotoHolder extends RecyclerView.ViewHolder {
+    private class PhotoHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
 
         private ImageView mImageView;
+        private PhotoBean mPhoto;
 
         public PhotoHolder(View itemView) {
             super(itemView);
             mImageView = (ImageView) itemView.findViewById(R.id.fragment_photo_gallery_image_view);
+            itemView.setOnClickListener(this);
         }
 
         public void bindPhotoBean(PhotoBean item) {
+            // store the item
+            mPhoto = item;
+
             Picasso.with(getActivity()).
-                    load(item.getUrl_s()).
+                    load(mPhoto.getUrl_s()).
                     placeholder(R.drawable.placeholder)
                     .into(mImageView);
+        }
+
+        @Override
+        public void onClick(View v) {
+            Intent i = new Intent(Intent.ACTION_VIEW, mPhoto.getPhotoPageUri());
+            startActivity(i);
         }
     }
 

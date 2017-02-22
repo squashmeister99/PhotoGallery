@@ -1,5 +1,7 @@
 package com.example.rajesh.photogallery;
 
+import android.net.Uri;
+
 import java.util.List;
 
 /**
@@ -210,6 +212,14 @@ public class PhotoGalleryGSON {
 
             public void setWidth_s(String width_s) {
                 this.width_s = width_s;
+            }
+
+            public Uri getPhotoPageUri() {
+                return Uri.parse("http:///www.flickr.com/photos/")
+                        .buildUpon()
+                        .appendPath(getOwner())
+                        .appendPath(getId())
+                        .build();
             }
         }
     }
