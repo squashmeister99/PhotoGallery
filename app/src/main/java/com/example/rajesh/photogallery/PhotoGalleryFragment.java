@@ -274,7 +274,7 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         public void onClick(View v) {
-            Intent i = new Intent(Intent.ACTION_VIEW, mPhoto.getPhotoPageUri());
+            Intent i = PhotoPageActivity.newIntent(getActivity(), mPhoto.getPhotoPageUri());
             startActivity(i);
         }
     }
