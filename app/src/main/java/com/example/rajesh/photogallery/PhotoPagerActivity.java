@@ -42,7 +42,7 @@ public class PhotoPagerActivity extends FragmentActivity {
             @Override
             public Fragment getItem(int position) {
                 PhotoBean photo = mPhotos.get(position);
-                return PhotoUrlFragment.newInstance(photo.getPhotoPageUri());
+                return FullScreenPhotoFragment.newInstance(photo.getUrl_s());
             }
 
             @Override
